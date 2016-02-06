@@ -3,8 +3,8 @@ MAINTAINER Bikash Agrawal
 
 ADD nifi-0.0.1-SNAPSHOT-bin.tar.gz .
 
-ADD logback.xml .
-RUN mv -f logback.xml ./nifi-0.0.1-SNAPSHOT/conf
+ADD template/logback.xml .
+RUN mv -f template/logback.xml ./nifi-0.0.1-SNAPSHOT/conf
 
 
 VOLUME ["/output", "/flowconf", "/flowrepo",  "/contentrepo", "/databaserepo", "/provenancerepo"]
