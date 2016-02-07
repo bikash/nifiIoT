@@ -1,5 +1,5 @@
 FROM java:7u65
-MAINTAINER Bikash Agrawal
+MAINTAINER BikashAgrawal<bikash.agrawa@gmail.com>
 
 ADD nifi-0.0.1-SNAPSHOT-bin.tar.gz .
 
