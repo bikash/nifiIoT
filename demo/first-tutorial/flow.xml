@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<template>
+    <description>Flow Demo v3</description>
+    <name>Flow Demo v3</name>
+    <snippet>
+<flowController>
+  <maxTimerDrivenThreadCount>10</maxTimerDrivenThreadCount>
+  <maxEventDrivenThreadCount>5</maxEventDrivenThreadCount>
+  <rootGroup>
+    <id>3c7a1a3c-1567-4d85-8e84-11bb4c3f0cb4</id>
+    <name>NiFi Flow</name>
+    <position x="0.0" y="0.0"/>
+    <comment/>
+    <processor>
+      <id>b5b841a8-72ba-43ac-ba20-f95a8a35caa8</id>
+      <name>PutFile</name>
+      <position x="783.0" y="77.99999237060547"/>
+      <styles/>
+      <comment/>
+      <class>org.apache.nifi.processors.standard.PutFile</class>
+      <maxConcurrentTasks>1</maxConcurrentTasks>
+      <schedulingPeriod>0 sec</schedulingPeriod>
+      <penalizationPeriod>30 sec</penalizationPeriod>
+      <yieldPeriod>1 sec</yieldPeriod>
+      <bulletinLevel>WARN</bulletinLevel>
+      <lossTolerant>false</lossTolerant>
+      <scheduledState>RUNNING</scheduledState>
+      <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+      <runDurationNanos>0</runDurationNanos>
+      <property>
+        <name>Directory</name>
+        <value>/tmp/nifi</value>
+      </property>
+      <property>
+        <name>Conflict Resolution Strategy</name>
+        <value>fail</value>
+      </property>
+      <property>
+        <name>Create Missing Directories</name>
+        <value>true</value>
+      </property>
+      <property>
+        <name>Maximum File Count</name>
+      </property>
+      <property>
+        <name>Last Modified Time</name>
+      </property>
+      <property>
+        <name>Permissions</name>
+      </property>
+      <property>
+        <name>Owner</name>
+      </property>
+      <property>
+        <name>Group</name>
+      </property>
+      <autoTerminatedRelationship>success</autoTerminatedRelationship>
+      <autoTerminatedRelationship>failure</autoTerminatedRelationship>
+    </processor>
+    <processor>
+      <id>fef7a608-ff9b-40e2-b3d8-25dab1d1cd56</id>
+      <name>ListenHTTP</name>
+      <position x="153.0" y="88.0"/>
+      <styles/>
+      <comment/>
+      <class>org.apache.nifi.processors.standard.ListenHTTP</class>
+      <maxConcurrentTasks>1</maxConcurrentTasks>
+      <schedulingPeriod>0 sec</schedulingPeriod>
+      <penalizationPeriod>30 sec</penalizationPeriod>
+      <yieldPeriod>1 sec</yieldPeriod>
+      <bulletinLevel>INFO</bulletinLevel>
+      <lossTolerant>false</lossTolerant>
+      <scheduledState>RUNNING</scheduledState>
+      <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+      <runDurationNanos>0</runDurationNanos>
+      <property>
+        <name>Base Path</name>
+        <value>contentListener</value>
+      </property>
+      <property>
+        <name>Listening Port</name>
+        <value>10080</value>
+      </property>
+      <property>
+        <name>Max Data to Receive per Second</name>
+      </property>
+      <property>
+        <name>SSL Context Service</name>
+      </property>
+      <property>
+        <name>Authorized DN Pattern</name>
+        <value>.*</value>
+      </property>
+      <property>
+        <name>Max Unconfirmed Flowfile Time</name>
+        <value>60 secs</value>
+      </property>
+      <property>
+        <name>HTTP Headers to receive as Attributes (Regex)</name>
+      </property>
+    </processor>
+    <connection>
+      <id>f2ed26b7-d82b-4cfd-8064-391996d5bedb</id>
+      <name/>
+      <bendPoints/>
+      <labelIndex>1</labelIndex>
+      <zIndex>0</zIndex>
+      <sourceId>fef7a608-ff9b-40e2-b3d8-25dab1d1cd56</sourceId>
+      <sourceGroupId>3c7a1a3c-1567-4d85-8e84-11bb4c3f0cb4</sourceGroupId>
+      <sourceType>PROCESSOR</sourceType>
+      <destinationId>b5b841a8-72ba-43ac-ba20-f95a8a35caa8</destinationId>
+      <destinationGroupId>3c7a1a3c-1567-4d85-8e84-11bb4c3f0cb4</destinationGroupId>
+      <destinationType>PROCESSOR</destinationType>
+      <relationship>success</relationship>
+      <maxWorkQueueSize>0</maxWorkQueueSize>
+      <maxWorkQueueDataSize>0 MB</maxWorkQueueDataSize>
+      <flowFileExpiration>0 sec</flowFileExpiration>
+    </connection>
+  </rootGroup>
+  <controllerServices>
+    <controllerService>
+      <id>3f903634-2972-4672-b59c-dae965575d28</id>
+      <name>StandardHttpContextMap</name>
+      <comment/>
+      <class>org.apache.nifi.http.StandardHttpContextMap</class>
+      <enabled>false</enabled>
+      <property>
+        <name>Maximum Outstanding Requests</name>
+        <value>5000</value>
+      </property>
+      <property>
+        <name>Request Expiration</name>
+        <value>1 min</value>
+      </property>
+      <property>
+        <name>http.query.string</name>
+        <value>${http.query.string}</value>
+      </property>
+    </controllerService>
+  </controllerServices>
+  <reportingTasks/>
+</flowController>
+</snippet> 
+<timestamp>10/18/2015 03:09:16 PDT</timestamp>
+</template>
