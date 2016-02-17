@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <template>
-    <description>IoT Demo v3</description>
-    <name>IoT Demo v3</name>
+    <description>IoT Demo v4</description>
+    <name>IoT Demo v4</name>
     <snippet>
         <controllerServices>
             <id>ebe0d28b-2eac-4242-9b33-b93e09fe5aa0</id>
