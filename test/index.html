@@ -168,15 +168,17 @@
       });
   }
   $(document).ready(function() {
-    var wsUri = "ws://localhost:8000/";
-
-    var socket = new WebSocket(wsUri);
+    var wsUri = "ws://localhost:5555/ws";
+    var host = "ws://localhost:5555/ws";
+    //var eb = new WebSocket(host);
+    //var host = "ws://localhost:9090/ws";
+ 
     //console.log("socket status: " + socket.readyState); 
       hrElement = $("#hr"); //document.getElementById("hr");
       heartElement = $("#heart");
       setupSmootie();
-      eb = new EventBus(socket);
-      //eb = new EventBus('http://localhost:5555/eventbus');
+      //eb = new EventBus(socket);
+      eb = new EventBus("http://localhost:5555/ws");
       eb.onopen = function () {
           subscribeToHeartrate();
           subscribeToActivity();
