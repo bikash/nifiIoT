@@ -178,7 +178,7 @@
       heartElement = $("#heart");
       setupSmootie();
       //eb = new EventBus(socket);
-      eb = new vertx.EventBus("http://localhost:5555");
+      eb = new EventBus("http://localhost:5555");
       eb.onopen = function () {
           subscribeToHeartrate();
           subscribeToActivity();
