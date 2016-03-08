@@ -4,7 +4,7 @@
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js" ></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js" ></script>
   <script src="http://cdn.jsdelivr.net/sockjs/1.0.0/sockjs.min.js"></script>
-  <script src="http://cdn.rawgit.com/vert-x3/vertx-bus-bower/master/vertx-eventbus.js"></script>
+  <script src="vertxbus.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/smoothie/1.27.0/smoothie.min.js"></script>
   <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/animate.css/3.4.0/animate.min.css">
@@ -116,8 +116,9 @@
       });
       smoothieChart.streamTo(document.getElementById("mycanvas"), 250);
   }
-  function publish(address,  message) {
+  function publish(address,  message, sensor) {
       var headers = {sensor: "hr"};
+      //alert(message)
       eb.publish(address, message, headers);
   }
   function subscribe(address) {
@@ -169,7 +170,7 @@
   }
   $(document).ready(function() {
     //var wsUri = "ws://localhost:5555/ws";
-    var host = "ws://localhost:5555/ws";
+    var host = "localhost:5555"
     //var eb = new WebSocket(host);
     //var host = "ws://localhost:9090/ws";
  
@@ -178,14 +179,14 @@
       heartElement = $("#heart");
       setupSmootie();
       //eb = new EventBus(socket);
-      eb = new EventBus("http://localhost:5555");
+      eb = new vertx.EventBus("http://localhost:5555");
       eb.onopen = function () {
           subscribeToHeartrate();
           subscribeToActivity();
       };
       $("#sendButton").click(function() {
           var msg = $("textarea#sendMessage").val();
-          publish("iot.in.hr", JSON.parse(msg));
+          publish(host, JSON.parse(msg),"iot.in.hr");
       });
   });
 </script>
