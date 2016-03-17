@@ -1,216 +1,306 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ *   Copyright (c) 2011-2015 The original author or authors
+ *   ------------------------------------------------------
+ *   All rights reserved. This program and the accompanying materials
+ *   are made available under the terms of the Eclipse Public License v1.0
+ *   and Apache License v2.0 which accompanies this distribution.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *       The Eclipse Public License is available at
+ *       http://www.eclipse.org/legal/epl-v10.html
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *       The Apache License v2.0 is available at
+ *       http://www.opensource.org/licenses/apache2.0.php
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   You may elect to redistribute this code under either of these licenses.
  */
-
-var vertx = vertx || {};
-
-!function(factory) {
-  if (typeof define === "function" && define.amd) {
-    // Expose as an AMD module with SockJS dependency.
-    // "vertxbus" and "sockjs" names are used because
-    // AMD module names are derived from file names.
-    define("vertxbus", ["sockjs"], factory);
-  } else {
-    // No AMD-compliant loader
+!function (factory) {
+  if (typeof require === 'function' && typeof module !== 'undefined') {
+    // CommonJS loader
+    var SockJS = require('sockjs-client');
+    if(!SockJS) {
+      throw new Error('vertx-eventbus.js requires sockjs-client, see http://sockjs.org');
+    }
     factory(SockJS);
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD loader
+    define('vertx-eventbus', ['sockjs'], factory);
+  } else {
+    // plain old include
+    if (typeof this.SockJS === 'undefined') {
+      throw new Error('vertx-eventbus.js requires sockjs-client, see http://sockjs.org');
+    }
+
+    EventBus = factory(this.SockJS);
   }
-}(function(SockJS) {
+}(function (SockJS) {
 
-  vertx.EventBus = function(url, options) {
-  
-    var that = this;
-    var sockJSConn = new SockJS(url, undefined, options);
-    var handlerMap = {};
-    var replyHandlers = {};
-    var state = vertx.EventBus.CONNECTING;
-    var sessionID = null;
-    var pingTimerID = null;
-  
-    that.onopen = null;
-    that.onclose = null;
+  function makeUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (a, b) {
+      return b = Math.random() * 16, (a == 'y' ? b & 3 | 8 : b | 0).toString(16);
+    });
+  }
 
-    that.login = function(username, password, replyHandler) {
-      sendOrPub("send", 'vertx.basicauthmanager.login', {username: username, password: password}, function(reply) {
-        if (reply.status === 'ok') {
-          that.sessionID = reply.sessionID;
-        }
-        if (replyHandler) {
-          delete reply.sessionID;
-          replyHandler(reply)
-        }
-      });
-    }
-  
-    that.send = function(address, message, replyHandler) {
-      sendOrPub("send", address, message, replyHandler)
-    }
-  
-    that.publish = function(address, message, replyHandler) {
-      sendOrPub("publish", address, message, replyHandler)
-    }
-  
-    that.registerHandler = function(address, handler) {
-      checkSpecified("address", 'string', address);
-      checkSpecified("handler", 'function', handler);
-      checkOpen();
-      var handlers = handlerMap[address];
-      if (!handlers) {
-        handlers = [handler];
-        handlerMap[address] = handlers;
-        // First handler for this address so we should register the connection
-        var msg = { type : "register",
-                    address: address };
-        sockJSConn.send(JSON.stringify(msg));
-      } else {
-        handlers[handlers.length] = handler;
+  function mergeHeaders(defaultHeaders, headers) {
+    if (defaultHeaders) {
+      if(!headers) {
+        return defaultHeaders;
       }
-    }
-  
-    that.unregisterHandler = function(address, handler) {
-      checkSpecified("address", 'string', address);
-      checkSpecified("handler", 'function', handler);
-      checkOpen();
-      var handlers = handlerMap[address];
-      if (handlers) {
-        var idx = handlers.indexOf(handler);
-        if (idx != -1) handlers.splice(idx, 1);
-        if (handlers.length == 0) {
-          // No more local handlers so we should unregister the connection
-  
-          var msg = { type : "unregister",
-                      address: address};
-          sockJSConn.send(JSON.stringify(msg));
-          delete handlerMap[address];
+
+      for (var headerName in defaultHeaders) {
+        if (defaultHeaders.hasOwnProperty(headerName)) {
+          // user can overwrite the default headers
+          if (typeof headers[headerName] === 'undefined') {
+            headers[headerName] = defaultHeaders[headerName];
+          }
         }
       }
     }
-  
-    that.close = function() {
-      checkOpen();
-      if (pingTimerID) clearInterval(pingTimerID);
-      state = vertx.EventBus.CLOSING;
-      sockJSConn.close();
-    }
-  
-    that.readyState = function() {
-      return state;
-    }
-  
-    sockJSConn.onopen = function() {
-      // Send the first ping then send a ping every 5 seconds
+
+    // headers are required to be a object
+    return headers || {};
+  }
+
+  /**
+   * EventBus
+   *
+   * @param url
+   * @param options
+   * @constructor
+   */
+  var EventBus = function (url, options) {
+    var self = this;
+
+    options = options || {};
+
+    var pingInterval = options.vertxbus_ping_interval || 5000;
+    var pingTimerID;
+
+    // attributes
+    this.sockJSConn = new SockJS(url, null, options);
+    this.state = EventBus.CONNECTING;
+    this.handlers = {};
+    this.replyHandlers = {};
+    this.defaultHeaders = null;
+
+    // default event handlers
+    this.onerror = function (err) {
+      try {
+        console.error(err);
+      } catch (e) {
+        // dev tools are disabled so we cannot use console on IE
+      }
+    };
+
+    var sendPing = function () {
+      self.sockJSConn.send(JSON.stringify({type: 'ping'}));
+    };
+
+    this.sockJSConn.onopen = function () {
+      // Send the first ping then send a ping every pingInterval milliseconds
       sendPing();
-      pingTimerID = setInterval(sendPing, 5000);
-      state = vertx.EventBus.OPEN;
-      if (that.onopen) {
-        that.onopen();
-      }
+      pingTimerID = setInterval(sendPing, pingInterval);
+      self.state = EventBus.OPEN;
+      self.onopen && self.onopen();
     };
-  
-    sockJSConn.onclose = function() {
-      state = vertx.EventBus.CLOSED;
-      if (that.onclose) {
-        that.onclose();
-      }
+
+    this.sockJSConn.onclose = function () {
+      self.state = EventBus.CLOSED;
+      if (pingTimerID) clearInterval(pingTimerID);
+      self.onclose && self.onclose();
     };
-  
-    sockJSConn.onmessage = function(e) {
-      var msg = e.data;
-      var json = JSON.parse(msg);
-      var body = json.body;
-      var replyAddress = json.replyAddress;
-      var address = json.address;
-      var replyHandler;
-      if (replyAddress) {
-        replyHandler = function(reply, replyHandler) {
-          // Send back reply
-          that.send(replyAddress, reply, replyHandler);
-        };
+
+    this.sockJSConn.onmessage = function (e) {
+      var json = JSON.parse(e.data);
+
+      // define a reply function on the message itself
+      if (json.replyAddress) {
+        Object.defineProperty(json, 'reply', {
+          value: function (message, headers, callback) {
+            self.send(json.replyAddress, message, headers, callback);
+          }
+        });
       }
-      var handlers = handlerMap[address];
-      if (handlers) {
-        // We make a copy since the handler might get unregistered from within the
-        // handler itself, which would screw up our iteration
-        var copy = handlers.slice(0);
-        for (var i  = 0; i < copy.length; i++) {
-          copy[i](body, replyHandler);
+
+      if (self.handlers[json.address]) {
+        // iterate all registered handlers
+        var handlers = self.handlers[json.address];
+        for (var i = 0; i < handlers.length; i++) {
+          if (json.type === 'err') {
+            handlers[i]({failureCode: json.failureCode, failureType: json.failureType, message: json.message});
+          } else {
+            handlers[i](null, json);
+          }
+        }
+      } else if (self.replyHandlers[json.address]) {
+        // Might be a reply message
+        var handler = self.replyHandlers[json.address];
+        delete self.replyHandlers[json.address];
+        if (json.type === 'err') {
+          handler({failureCode: json.failureCode, failureType: json.failureType, message: json.message});
+        } else {
+          handler(null, json);
         }
       } else {
-        // Might be a reply message
-        var handler = replyHandlers[address];
-        if (handler) {
-          delete replyHandlers[address];
-          handler(body, replyHandler);
+        if (json.type === 'err') {
+          self.onerror(json);
+        } else {
+          try {
+            console.warn('No handler found for message: ', json);
+          } catch (e) {
+            // dev tools are disabled so we cannot use console on IE
+          }
         }
       }
     }
+  };
 
-    function sendPing() {
-      var msg = {
-        type: "ping"
-      }
-      sockJSConn.send(JSON.stringify(msg));
+  /**
+   * Send a message
+   *
+   * @param {String} address
+   * @param {Object} message
+   * @param {Object} [headers]
+   * @param {Function} [callback]
+   */
+  EventBus.prototype.send = function (address, message, headers, callback) {
+    // are we ready?
+    if (this.state != EventBus.OPEN) {
+      throw new Error('INVALID_STATE_ERR');
     }
-  
-    function sendOrPub(sendOrPub, address, message, replyHandler) {
-      checkSpecified("address", 'string', address);
-      checkSpecified("replyHandler", 'function', replyHandler, true);
-      checkOpen();
-      var envelope = { type : sendOrPub,
-                       address: address,
-                       body: message };
-      if (that.sessionID) {
-        envelope.sessionID = that.sessionID;
-      }
-      if (replyHandler) {
-        var replyAddress = makeUUID();
-        envelope.replyAddress = replyAddress;
-        replyHandlers[replyAddress] = replyHandler;
-      }
-      var str = JSON.stringify(envelope);
-      sockJSConn.send(str);
+
+    if (typeof headers === 'function') {
+      callback = headers;
+      headers = {};
     }
-  
-    function checkOpen() {
-      if (state != vertx.EventBus.OPEN) {
-        throw new Error('INVALID_STATE_ERR');
+
+    var envelope = {
+      type: 'send',
+      address: address,
+      headers: mergeHeaders(this.defaultHeaders, headers),
+      body: message
+    };
+
+    if (callback) {
+      var replyAddress = makeUUID();
+      envelope.replyAddress = replyAddress;
+      this.replyHandlers[replyAddress] = callback;
+    }
+
+    this.sockJSConn.send(JSON.stringify(envelope));
+  };
+
+  /**
+   * Publish a message
+   *
+   * @param {String} address
+   * @param {Object} message
+   * @param {Object} [headers]
+   */
+  EventBus.prototype.publish = function (address, message, headers) {
+    // are we ready?
+    if (this.state != EventBus.OPEN) {
+      throw new Error('INVALID_STATE_ERR');
+    }
+
+    this.sockJSConn.send(JSON.stringify({
+      type: 'publish',
+      address: address,
+      headers: mergeHeaders(this.defaultHeaders, headers),
+      body: message
+    }));
+  };
+
+  /**
+   * Register a new handler
+   *
+   * @param {String} address
+   * @param {Object} [headers]
+   * @param {Function} callback
+   */
+  EventBus.prototype.registerHandler = function (address, headers, callback) {
+    // are we ready?
+    if (this.state != EventBus.OPEN) {
+      throw new Error('INVALID_STATE_ERR');
+    }
+
+    if (typeof headers === 'function') {
+      callback = headers;
+      headers = {};
+    }
+
+    // ensure it is an array
+    if (!this.handlers[address]) {
+      this.handlers[address] = [];
+      // First handler for this address so we should register the connection
+      this.sockJSConn.send(JSON.stringify({
+        type: 'register',
+        address: address,
+        headers: mergeHeaders(this.defaultHeaders, headers)
+      }));
+    }
+
+    this.handlers[address].push(callback);
+  };
+
+  /**
+   * Unregister a handler
+   *
+   * @param {String} address
+   * @param {Object} [headers]
+   * @param {Function} callback
+   */
+  EventBus.prototype.unregisterHandler = function (address, headers, callback) {
+    // are we ready?
+    if (this.state != EventBus.OPEN) {
+      throw new Error('INVALID_STATE_ERR');
+    }
+
+    var handlers = this.handlers[address];
+
+    if (handlers) {
+
+      if (typeof headers === 'function') {
+        callback = headers;
+        headers = {};
+      }
+
+      var idx = handlers.indexOf(callback);
+      if (idx != -1) {
+        handlers.splice(idx, 1);
+        if (handlers.length === 0) {
+          // No more local handlers so we should unregister the connection
+          this.sockJSConn.send(JSON.stringify({
+            type: 'unregister',
+            address: address,
+            headers: mergeHeaders(this.defaultHeaders, headers)
+          }));
+
+          delete this.handlers[address];
+        }
       }
     }
-  
-    function checkSpecified(paramName, paramType, param, optional) {
-      if (!optional && !param) {
-        throw new Error("Parameter " + paramName + " must be specified");
-      }
-      if (param && typeof param != paramType) {
-        throw new Error("Parameter " + paramName + " must be of type " + paramType);
-      }
+  };
+
+  /**
+   * Closes the connection to the EvenBus Bridge.
+   */
+  EventBus.prototype.close = function () {
+    this.state = EventBus.CLOSING;
+    this.sockJSConn.close();
+  };
+
+  EventBus.CONNECTING = 0;
+  EventBus.OPEN = 1;
+  EventBus.CLOSING = 2;
+  EventBus.CLOSED = 3;
+
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = EventBus;
+    } else {
+      exports.EventBus = EventBus;
     }
-  
-    function isFunction(obj) {
-      return !!(obj && obj.constructor && obj.call && obj.apply);
-    }
-  
-    function makeUUID(){return"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-        .replace(/[xy]/g,function(a,b){return b=Math.random()*16,(a=="y"?b&3|8:b|0).toString(16)})}
-  
+  } else {
+    return EventBus;
   }
-  
-  vertx.EventBus.CONNECTING = 0;
-  vertx.EventBus.OPEN = 1;
-  vertx.EventBus.CLOSING = 2;
-  vertx.EventBus.CLOSED = 3;
-
-  return vertx.EventBus;
-
 });

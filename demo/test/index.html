@@ -116,9 +116,8 @@
       });
       smoothieChart.streamTo(document.getElementById("mycanvas"), 250);
   }
-  function publish(address,  message, sensor) {
+  function publish(address,  message) {
       var headers = {sensor: "hr"};
-      //alert(message)
       eb.publish(address, message, headers);
   }
   function subscribe(address) {
@@ -169,24 +168,20 @@
       });
   }
   $(document).ready(function() {
-    //var wsUri = "ws://localhost:5555/ws";
-    var host = "localhost:5555"
-    //var eb = new WebSocket(host);
-    //var host = "ws://localhost:9090/ws";
- 
-    //console.log("socket status: " + socket.readyState); 
       hrElement = $("#hr"); //document.getElementById("hr");
       heartElement = $("#heart");
       setupSmootie();
-      //eb = new EventBus(socket);
-      eb = new vertx.EventBus("http://localhost:5555");
+      //eb = new EventBus('http://apsrt1451:5555/eventbus');
+      eb = new EventBus('http://localhost:5555/eventbus');
       eb.onopen = function () {
           subscribeToHeartrate();
           subscribeToActivity();
       };
       $("#sendButton").click(function() {
           var msg = $("textarea#sendMessage").val();
-          publish(host, JSON.parse(msg),"iot.in.hr");
+          publish("iot.in.hr", JSON.parse(msg));
+           //subscribeToHeartrate();
+          subscribe("iot.in.hr")
       });
   });
 </script>
