@@ -29,8 +29,7 @@ $userRow=mysql_fetch_array($res);
 </div>
 
 <div id="body">
-	This is a test
-  
+	Upload the file &nbsp;<a href="file.php">Upload</a>
 </div>
 
 </body>
