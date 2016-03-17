@@ -4,7 +4,7 @@
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js" ></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js" ></script>
   <script src="http://cdn.jsdelivr.net/sockjs/1.0.0/sockjs.min.js"></script>
-  <script src="vertxbus.js"></script>
+  <script src="http://cdn.rawgit.com/vert-x3/vertx-bus-bower/master/vertx-eventbus.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/smoothie/1.27.0/smoothie.min.js"></script>
   <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/animate.css/3.4.0/animate.min.css">
@@ -16,16 +16,19 @@
         display:inline-block;
         position:relative;
     }
+
     #sendButton{
         position:absolute;
         bottom:10px;
         right:10px;
     }
+
     @keyframes pulse-slow {
         0%{transform:scale(1)}
         50%{transform:scale(1.4)}
         100%{transform:scale(1)}
     }
+
     /** animate-heartbeat **/
     @keyframes pulse {
         0% {
@@ -65,9 +68,11 @@
     .animate-heartbeat {
         animation: pulse-slow 2s infinite;
     }
+
     .fa-stack-text {
         font-size: 2rem ;
     }
+
 </style>
 
 <body>
@@ -91,11 +96,13 @@
 </div>
 
 <script>
+
   var eb = null;
   var timer = null;
   var hrElement;
   var heartElement;
   var timeSeries;
+
   function setupSmootie() {
       timeSeries = new TimeSeries();
       var smoothieChart = new SmoothieChart({
@@ -116,29 +123,40 @@
       });
       smoothieChart.streamTo(document.getElementById("mycanvas"), 250);
   }
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/master
   function publish(address,  message) {
       var headers = {sensor: "hr"};
       eb.publish(address, message, headers);
   }
+
   function subscribe(address) {
       eb.registerHandler(address, function(msg, replyTo) {
           console.log(msg.text);
       });
   }
+
   function subscribeToHeartrate() {
       eb.registerHandler('iot.out.sumo.hr', function(err, res) {
           var hr = parseInt(res.body.hr);
           hrElement.html(hr);
+
           if(!heartElement.hasClass("animate-heartbeat")) {
               console.info('adding animate...');
               heartElement.addClass("animate-heartbeat");
           }
+
           //reset timer.
           clearTimeout(timer);
           timer = setTimeout(function() {
               console.log('removing animate...');
               heartElement.removeClass("animate-heartbeat");
           }, 3000);
+
+
+
           if (hr > 120) {
               heartElement.css({
                   color: "#d63230"
@@ -156,9 +174,12 @@
                   color: "#008000"
               } );
           }
+
           timeSeries.append(new Date().getTime(), hr);
       });
   }
+
+
   function subscribeToActivity() {
       eb.registerHandler('iot.out.sumo.activity.inactive', function(err, res) {
           console.log("iot.out.sumo.activity.inactive: ", res.body)
@@ -167,23 +188,34 @@
           console.log("iot.out.sumo.activity.restored: ", res.body)
       });
   }
+
   $(document).ready(function() {
       hrElement = $("#hr"); //document.getElementById("hr");
       heartElement = $("#heart");
+
       setupSmootie();
       //eb = new EventBus('http://apsrt1451:5555/eventbus');
       eb = new EventBus('http://localhost:5555/eventbus');
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/master
       eb.onopen = function () {
           subscribeToHeartrate();
           subscribeToActivity();
       };
+
       $("#sendButton").click(function() {
           var msg = $("textarea#sendMessage").val();
           publish("iot.in.hr", JSON.parse(msg));
+<<<<<<< HEAD
            //subscribeToHeartrate();
           subscribe("iot.in.hr")
+=======
+>>>>>>> origin/master
       });
   });
+
 </script>
 
 </body>
