@@ -22,8 +22,9 @@ $userRow=mysql_fetch_array($res);
     <label>IoT testbed Document Tracker</label>
     </div>
     <div id="right">
+
     	<div id="content">
-        	hi' <?php echo $userRow['user_name']; ?>&nbsp;<a href="logout.php?logout">Sign Out</a>
+        	<a href="view.php">View List</a>&nbsp;&nbsp;&nbsp;&nbsp;hi' <?php echo $userRow['user_name']; ?>&nbsp;<a href="logout.php?logout">Sign Out</a>
         </div>
     </div>
 </div>

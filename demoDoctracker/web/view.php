@@ -9,12 +9,12 @@ include_once 'dbconnect.php';
 </head>
 <body>
 <div id="header">
-<label>File Uploading With PHP and MySql</label>
+<label>File Uploading </label>
 </div>
 <div id="body">
 	<table width="80%" border="1">
     <tr>
-    <th colspan="4">your uploads...<label><a href="index.php">upload new files...</a></label></th>
+    <th colspan="4">your uploads...<label><a href="file.php">upload new files...</a></label></th>
     </tr>
     <tr>
     <td>File Name</td>
